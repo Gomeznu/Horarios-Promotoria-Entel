@@ -1,0 +1,8 @@
+{
+  "name": "tablero-rutas-payjoy",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@netlify/blobs": "*"
+  }
+}
