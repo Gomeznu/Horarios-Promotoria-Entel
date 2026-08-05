@@ -876,18 +876,37 @@ function zohoDatos(){
     filas.push([rel[0],rel[1],r.fecha,sup,'VISITA','']);
   });
   filas.sort((a,b)=>a[3].localeCompare(b[3])||a[2].localeCompare(b[2])||String(a[1]).localeCompare(String(b[1])));
-  return{filas,faltan,fuera,bloques:base.length};
+  const diag={
+    total:REG.length,
+    sup:REG.filter(r=>r.rol==='supervisor').length,
+    supRuta:REG.filter(r=>r.rol==='supervisor'&&enRuta(r)).length,
+    conPdv:REG.filter(r=>r.rol==='supervisor'&&enRuta(r)&&r.pdvCod).length,
+    enPeriodo:base.length,
+    rel:(typeof REL==='object'&&REL)?Object.keys(REL).length:0,
+    periodo:v||'(todo)'
+  };
+  return{filas,faltan,fuera,bloques:base.length,diag};
 }
 function pintarZoho(){
-  const{filas,faltan,fuera,bloques}=zohoDatos();
+  let d;
+  try{ d=zohoDatos() }
+  catch(e){
+    $('znote').className='note bad';
+    $('znote').textContent='Error al generar: '+e.message;
+    $('zaviso').innerHTML='';$('zprev').innerHTML='';
+    $('zxlsx').disabled=true;$('zcsv').disabled=true;
+    return;
+  }
+  const{filas,faltan,fuera,bloques,diag}=d;
   $('znote').className='note';
-  $('znote').textContent=filas.length?`${filas.length} filas · de ${bloques} bloques de visita`:'No hay visitas de supervisor en este periodo.';
+  $('znote').textContent=filas.length?`${filas.length} filas · de ${bloques} bloques de visita`:'No se generó ninguna fila en este periodo.';
   const av=[];
   if(faltan.size)av.push(`<b>${faltan.size} PDV de ENTEL sin merchant asignado</b>, así que sus visitas no salen en el archivo: ${[...faltan.keys()].join(', ')}. Hay que agregarlos a la tabla de relación.`);
   if(fuera.size)av.push(`${fuera.size} PDV fuera de ENTEL quedaron excluidos, como corresponde: ${[...fuera].slice(0,4).join(', ')}${fuera.size>4?'…':''}.`);
-  $('zaviso').innerHTML=av.length?`<ul style="margin:12px 0 0;padding-left:18px;font-size:12.5px;color:var(--muted);max-width:80ch">${av.map(x=>`<li style="margin-bottom:5px">${x}</li>`).join('')}</ul>`:'';
-  $('zprev').innerHTML='<table><tr>'+ZCOLS.map(c=>`<th>${c}</th>`).join('')+'</tr>'+
-    filas.slice(0,30).map(r=>'<tr>'+r.map((c,i)=>`<td>${i===2?fmtD(c)+'/'+c.slice(0,4):c}</td>`).join('')+'</tr>').join('')+'</table>';
+  if(!filas.length)av.push(`<b>Diagnóstico.</b> Bloques cargados: ${diag.total}. De supervisor: ${diag.sup}. En ruta: ${diag.supRuta}. Con PDV: ${diag.conPdv}. Dentro del periodo ${diag.periodo}: ${diag.enPeriodo}. Tabla de merchants: ${diag.rel} tiendas. El primer número que salga en cero indica dónde se corta.`);
+  $('zaviso').innerHTML=av.length?`<ul style="margin:12px 0 0;padding-left:18px;font-size:12.5px;color:var(--muted);max-width:82ch">${av.map(x=>`<li style="margin-bottom:5px">${x}</li>`).join('')}</ul>`:'';
+  $('zprev').innerHTML=filas.length?('<table><tr>'+ZCOLS.map(c=>`<th>${c}</th>`).join('')+'</tr>'+
+    filas.slice(0,30).map(r=>'<tr>'+r.map((c,i)=>`<td>${i===2?fmtD(c)+'/'+c.slice(0,4):c}</td>`).join('')+'</tr>').join('')+'</table>'):'';
   $('zxlsx').disabled=!filas.length;$('zcsv').disabled=!filas.length;
 }
 function zohoNombre(ext){
@@ -896,7 +915,8 @@ function zohoNombre(ext){
 }
 $('zper').onchange=pintarZoho;
 $('zxlsx').onclick=()=>{
-  const{filas}=zohoDatos();
+  let filas;try{filas=zohoDatos().filas}catch(e){$('znote').className='note bad';$('znote').textContent='Error: '+e.message;return}
+  if(!filas.length){$('znote').className='note bad';$('znote').textContent='No hay filas que descargar.';return}
   const aoa=[ZCOLS,...filas.map(r=>[r[0],r[1],new Date(r[2]+'T12:00:00'),r[3],r[4],null])];
   const ws=XLSX.utils.aoa_to_sheet(aoa,{cellDates:true,dateNF:'dd/mm/yyyy'});
   ws['!cols']=[{wch:13},{wch:26},{wch:15},{wch:36},{wch:16},{wch:12}];
@@ -905,7 +925,8 @@ $('zxlsx').onclick=()=>{
   $('znote').className='note ok';$('znote').textContent='Archivo generado';
 };
 $('zcsv').onclick=()=>{
-  const{filas}=zohoDatos();
+  let filas;try{filas=zohoDatos().filas}catch(e){$('znote').className='note bad';$('znote').textContent='Error: '+e.message;return}
+  if(!filas.length){$('znote').className='note bad';$('znote').textContent='No hay filas que descargar.';return}
   const esc=v=>{v=String(v??'');return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
   bajar(zohoNombre('csv'),[ZCOLS.join(','),...filas.map(r=>r.map(esc).join(','))].join('\r\n'),'text/csv');
   $('znote').className='note ok';$('znote').textContent='Archivo generado';
