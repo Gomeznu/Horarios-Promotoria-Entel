@@ -1,0 +1,1193 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tablero de rutas — PayJoy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --ink:#131F29;--paper:#E8EDF1;--surface:#FFF;--line:#CBD5DE;--line-soft:#E3E9EE;--muted:#6C7C8A;
+  --sup:#0E5B62;--sup-soft:#D5E8E8;--prom:#3F4E9C;--prom-soft:#DFE3F4;
+  --alert:#A9540E;--alert-soft:#F7E6D3;--ok:#3E7A4E;--off:#EDF0F3;--rowlabel:214px;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --cond:"IBM Plex Sans Condensed","IBM Plex Sans",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1480px;margin:0 auto;padding:20px 20px 60px}
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;gap:18px;justify-content:space-between;margin-bottom:16px}
+.brand h1{font-family:var(--cond);font-weight:700;font-size:25px;margin:0;text-transform:uppercase;letter-spacing:-.01em}
+.brand p{margin:3px 0 0;color:var(--muted);font-size:12.5px}
+.stamp{font-family:var(--mono);font-size:12px;color:var(--muted);background:var(--surface);border:1px solid var(--line);padding:7px 11px;border-radius:2px}
+.tabs{display:flex;border-bottom:1px solid var(--line);margin-bottom:14px;overflow-x:auto}
+.tab{font-family:var(--cond);text-transform:uppercase;letter-spacing:.05em;font-size:12.5px;font-weight:600;background:none;border:none;border-bottom:2px solid transparent;padding:9px 15px;cursor:pointer;color:var(--muted);white-space:nowrap}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--sup)}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;background:var(--surface);border:1px solid var(--line);border-radius:2px;padding:12px 14px;margin-bottom:14px}
+.field{display:flex;flex-direction:column;gap:4px;min-width:126px}
+.field label{font-family:var(--cond);text-transform:uppercase;letter-spacing:.07em;font-size:10.5px;font-weight:600;color:var(--muted)}
+select,input{font-family:var(--sans);font-size:13px;color:var(--ink);border:1px solid var(--line);background:var(--surface);border-radius:2px;padding:6px 8px;max-width:236px}
+select:focus-visible,input:focus-visible,button:focus-visible{outline:2px solid var(--sup);outline-offset:1px}
+.spacer{flex:1}
+.btn{font-family:var(--cond);text-transform:uppercase;letter-spacing:.05em;font-size:11.5px;font-weight:600;border:1px solid var(--ink);background:var(--ink);color:#fff;padding:8px 13px;border-radius:2px;cursor:pointer}
+.btn:hover{background:#000}
+.btn:disabled{opacity:.4;cursor:default}
+.btn.ghost{background:var(--surface);color:var(--ink);border-color:var(--line)}
+.btn.ghost:hover:not(:disabled){background:var(--paper)}
+.btn.danger{background:var(--surface);color:var(--alert);border-color:var(--alert)}
+.stats{display:flex;flex-wrap:wrap;gap:1px;background:var(--line);border:1px solid var(--line);margin-bottom:14px}
+.stat{background:var(--surface);padding:10px 16px;flex:1;min-width:126px}
+.stat .n{font-family:var(--mono);font-size:20px;font-weight:600;letter-spacing:-.02em}
+.stat .k{font-family:var(--cond);text-transform:uppercase;letter-spacing:.07em;font-size:10.5px;color:var(--muted);font-weight:600}
+.stat.warn .n{color:var(--alert)}
+.board{background:var(--surface);border:1px solid var(--line);border-radius:2px;overflow:auto;max-height:78vh}
+.grid{min-width:940px}
+.ruler{display:grid;grid-template-columns:var(--rowlabel) repeat(14,minmax(0,1fr));position:sticky;top:0;z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+.ruler .corner{font-family:var(--cond);text-transform:uppercase;letter-spacing:.07em;font-size:10.5px;color:var(--muted);font-weight:600;padding:8px 12px;border-right:1px solid var(--line)}
+.ruler .h{font-family:var(--mono);font-size:11px;color:var(--muted);padding:8px 0 8px 5px;border-left:1px solid var(--line-soft)}
+.daygroup{display:grid;grid-template-columns:var(--rowlabel) 1fr;border-top:1px solid var(--line);background:var(--paper);position:sticky;top:31px;z-index:4}
+.daygroup .d{font-family:var(--cond);text-transform:uppercase;letter-spacing:.09em;font-size:11px;font-weight:700;padding:5px 12px;border-right:1px solid var(--line)}
+.daygroup .dd{font-family:var(--mono);font-size:11px;color:var(--muted);padding:5px 8px}
+.row{display:grid;grid-template-columns:var(--rowlabel) repeat(14,minmax(0,1fr));border-top:1px solid var(--line-soft)}
+.row:hover .rowlabel{background:var(--paper)}
+.rowlabel{padding:6px 12px;border-right:1px solid var(--line);display:flex;flex-direction:column;justify-content:center;gap:1px;overflow:hidden;position:sticky;left:0;background:var(--surface);z-index:2}
+.rowlabel .n{font-weight:500;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rowlabel .m{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.track{display:grid;grid-column:2 / -1;padding:3px 0}
+.tick{border-left:1px solid var(--line-soft);grid-row:1 / -1}
+.blk{margin:1px 2px 1px 0;border-radius:2px;padding:2px 6px;overflow:hidden;cursor:pointer;text-align:left;border:1px solid;font-family:var(--sans);display:flex;flex-direction:column;justify-content:center;min-width:0}
+.blk .t{font-family:var(--mono);font-size:9.5px;opacity:.85;letter-spacing:-.03em}
+.blk .l{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.blk:hover{filter:brightness(.95)}
+.blk.sup{background:var(--sup-soft);border-color:var(--sup);color:var(--sup);background-image:repeating-linear-gradient(135deg,transparent 0 6px,rgba(14,91,98,.09) 6px 12px)}
+.blk.prom{background:var(--prom-soft);border-color:var(--prom);color:var(--prom)}
+.blk.prom.rot{border-style:dashed}
+.blk.off{background:var(--off);border-color:var(--line);color:var(--muted);cursor:default;grid-column:1 / -1}
+.blk.off .l{font-weight:400;font-size:11px}
+.empty{padding:30px 16px;color:var(--muted);font-size:13px}
+.legend{display:flex;flex-wrap:wrap;gap:16px;align-items:center;margin-top:10px;font-size:11.5px;color:var(--muted)}
+.legend i{display:inline-block;width:16px;height:11px;border:1px solid;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.legend .s{background:var(--sup-soft);border-color:var(--sup);background-image:repeating-linear-gradient(135deg,transparent 0 3px,rgba(14,91,98,.2) 3px 6px)}
+.legend .p{background:var(--prom-soft);border-color:var(--prom)}
+.legend .o{background:var(--off);border-color:var(--line)}
+table.cov{width:100%;border-collapse:collapse;background:var(--surface);font-size:12.5px}
+table.cov th,table.cov td{border:1px solid var(--line-soft);padding:6px 8px;text-align:left}
+table.cov thead th{background:var(--paper);border-color:var(--line);position:sticky;top:0;z-index:2;font-family:var(--cond);text-transform:uppercase;letter-spacing:.06em;font-size:10.5px;color:var(--muted)}
+table.cov td.num{font-family:var(--mono);text-align:center;width:64px}
+td.gap{background:var(--alert-soft);color:var(--alert);font-weight:600}
+td.thin{background:#FBF3E8;color:var(--alert)}
+.pill{display:inline-block;font-family:var(--cond);text-transform:uppercase;letter-spacing:.05em;font-size:10px;font-weight:700;padding:2px 6px;border-radius:2px}
+.pill.ok{background:#DFEDE2;color:var(--ok)}
+.pill.bad{background:var(--alert-soft);color:var(--alert)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:2px;padding:16px 18px;margin-bottom:14px}
+.panel h2{font-family:var(--cond);text-transform:uppercase;letter-spacing:.06em;font-size:13px;margin:0 0 4px}
+.panel p{margin:0 0 12px;color:var(--muted);font-size:12.5px;max-width:80ch}
+.panel ul{margin:0 0 4px;padding-left:18px;color:var(--muted);font-size:12.5px;max-width:80ch}
+.panel li{margin-bottom:5px}
+.panel li b{color:var(--ink);font-weight:600}
+.drop{border:1.5px dashed var(--line);border-radius:2px;padding:26px 18px;text-align:center;background:var(--paper);cursor:pointer;transition:border-color .15s,background .15s}
+.drop:hover,.drop.over{border-color:var(--sup);background:#E2EDEE}
+.drop .big{font-family:var(--cond);font-size:15px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.drop .sm{font-size:12.5px;color:var(--muted);margin-top:4px}
+.sheets{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 0}
+.sheets label{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:2px;padding:5px 9px;font-size:12.5px;cursor:pointer;background:var(--surface)}
+.sheets label:hover{background:var(--paper)}
+.sheets label.on{border-color:var(--sup);background:var(--sup-soft);color:var(--sup)}
+.sheets .c{font-family:var(--mono);font-size:11px;opacity:.7}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:flex-end}
+.note{font-size:12px;color:var(--muted);padding-bottom:8px;max-width:60ch}
+.note.ok{color:var(--ok)}
+.note.bad{color:var(--alert)}
+.weeks{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:4px}
+.weeks th{text-align:left;font-family:var(--cond);text-transform:uppercase;letter-spacing:.06em;font-size:10.5px;color:var(--muted);border-bottom:1px solid var(--line);padding:6px 8px}
+.weeks td{border-bottom:1px solid var(--line-soft);padding:6px 8px}
+.weeks td.num{font-family:var(--mono)}
+.prev{overflow:auto;border:1px solid var(--line);margin-top:12px;max-height:330px}
+.prev table{border-collapse:collapse;font-family:var(--mono);font-size:11px;white-space:nowrap;width:100%}
+.prev th{background:var(--paper);text-align:left;padding:5px 9px;border-bottom:1px solid var(--line);font-weight:600;position:sticky;top:0}
+.prev td{padding:4px 9px;border-bottom:1px solid var(--line-soft)}
+dialog{border:1px solid var(--ink);border-radius:2px;padding:0;max-width:400px;width:92%;background:var(--surface)}
+dialog::backdrop{background:rgba(19,31,41,.35)}
+.dlg-h{padding:14px 18px;border-bottom:1px solid var(--line)}
+.dlg-h .k{font-family:var(--cond);text-transform:uppercase;letter-spacing:.07em;font-size:10.5px;color:var(--muted);font-weight:600}
+.dlg-h .v{font-size:17px;font-weight:600;font-family:var(--cond)}
+.dlg-b{padding:14px 18px;display:grid;grid-template-columns:auto 1fr;gap:7px 16px;font-size:13px;margin:0}
+.dlg-b dt{font-family:var(--cond);text-transform:uppercase;letter-spacing:.06em;font-size:10.5px;color:var(--muted);font-weight:600;padding-top:2px}
+.dlg-b dd{margin:0}
+.dlg-f{padding:12px 18px;border-top:1px solid var(--line);text-align:right}
+.hidden{display:none !important}
+#dlgClave .dlg-b{display:block}
+#dlgClave input{width:100%;max-width:none;font-family:var(--mono);letter-spacing:.08em}
+.pub{background:var(--sup-soft);border:1px solid var(--sup);color:var(--sup);border-radius:2px;padding:9px 12px;font-size:12.5px;margin-bottom:14px}
+@media (max-width:640px){:root{--rowlabel:148px}.wrap{padding:14px 12px 50px}}
+</style>
+<div class="wrap">
+  <div class="top">
+    <div class="brand">
+      <h1>Tablero de rutas</h1>
+      <p>Cobertura semanal de supervisores y promotores · cadenas ENTEL y HOME</p>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <div class="stamp" id="stamp">Cargando…</div>
+      <button class="btn ghost" id="btnSesion">Ingresar</button>
+    </div>
+  </div>
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" data-view="sup" aria-selected="true">Supervisores</button>
+    <button class="tab" role="tab" data-view="pdv" aria-selected="false">Puntos de venta</button>
+    <button class="tab" role="tab" data-view="cov" aria-selected="false">Cobertura</button>
+    <button class="tab" role="tab" data-view="load" aria-selected="false">Cargar semana</button>
+    <button class="tab" role="tab" data-view="zoho" aria-selected="false">Pre-carga ZOHO</button>
+    <button class="tab" role="tab" data-view="dir" aria-selected="false">Directorio</button>
+    <button class="tab" role="tab" data-view="exp" aria-selected="false">Exportar</button>
+  </div>
+  <div class="bar" id="bar">
+    <div class="field" id="w-fsem"><label for="fsem">Semana</label><select id="fsem"></select></div>
+    <div class="field" id="w-fciudad"><label for="fciudad">Ciudad</label><select id="fciudad"></select></div>
+    <div class="field" id="w-fjefe"><label for="fjefe">Supervisor a cargo</label><select id="fjefe"></select></div>
+    <div class="field" id="w-fpdv"><label for="fpdv">Punto de venta</label><select id="fpdv"></select></div>
+    <div class="field" id="w-fper"><label for="fper">Persona</label><select id="fper"></select></div>
+    <div class="field" id="w-fdia"><label for="fdia">Día</label><select id="fdia"></select></div>
+    <div class="field" id="w-frol"><label for="frol">Mostrar</label><select id="frol"></select></div>
+    <div class="field" id="w-foff"><label for="foff"><input type="checkbox" id="foff" checked style="vertical-align:-2px"> Descansos</label></div>
+    <div class="spacer"></div>
+    <button class="btn ghost" id="reset">Limpiar filtros</button>
+  </div>
+  <div class="pub hidden" id="avisoPub"></div>
+  <div class="stats" id="stats"></div>
+  <section id="v-board">
+    <div class="board"><div class="grid" id="grid"></div></div>
+    <div class="legend">
+      <span><i class="s"></i>Supervisor en ruta</span><span><i class="p"></i>Promotor</span>
+      <span><i class="o"></i>Descanso, feriado o vacaciones</span><span>Clic en un bloque para ver el detalle</span>
+    </div>
+  </section>
+  <section id="v-cov" class="hidden">
+    <div class="board"><table class="cov" id="covtable"></table></div>
+    <div class="legend"><span><i class="o" style="background:var(--alert-soft);border-color:var(--alert)"></i>Sin promotor ese día</span><span>Las horas son de promotor · S = supervisores en ruta</span></div>
+  </section>
+  <section id="v-load" class="hidden">
+    <div class="panel">
+      <h2>Cargar la ruta de la semana</h2>
+      <p>Sube el Excel tal como te llega. Se leen las hojas que tengan la cabecera de ruta, se toman solo las filas de ENTEL y HOME, y se rescatan las ausencias aunque vengan sin cadena ni PDV.</p>
+      <div class="drop" id="drop">
+        <div class="big">Arrastra el Excel aquí</div>
+        <div class="sm">o haz clic para elegirlo · .xlsx y .xlsm</div>
+      </div>
+      <input type="file" id="file" accept=".xlsx,.xlsm" class="hidden">
+      <div id="sheetbox" class="hidden">
+        <p style="margin:14px 0 0"><b style="color:var(--ink)">Hojas encontradas.</b> Marca las que quieres cargar.</p>
+        <div class="sheets" id="sheets"></div>
+        <div class="actions">
+          <button class="btn" id="doload">Agregar al acumulado</button>
+          <button class="btn ghost" id="cancel">Cancelar</button>
+          <span class="note" id="loadnote"></span>
+        </div>
+      </div>
+      <div class="note" id="dropnote" style="margin-top:10px"></div>
+    </div>
+    <div class="panel">
+      <h2>Semanas en el acumulado</h2>
+      <p>Si vuelves a subir una semana ya cargada, sus bloques se reemplazan en vez de duplicarse. La llave es fecha, DNI, PDV y hora de inicio.</p>
+      <table class="weeks" id="weeks"></table>
+      <div class="actions">
+        <button class="btn ghost" id="save">Guardar acumulado</button>
+        <button class="btn ghost" id="loadacc">Cargar acumulado</button>
+        <input type="file" id="accfile" accept=".json" class="hidden">
+        <div class="spacer"></div>
+        <button class="btn danger" id="wipe">Borrar todo</button>
+        <span class="note" id="accnote"></span>
+      </div>
+    </div>
+    <div class="panel"><h2>Revisar en esta semana</h2><ul id="alertas"></ul></div>
+  </section>
+  <section id="v-zoho" class="hidden">
+    <div class="panel">
+      <h2>Pre-carga ZOHO · plan de rutas por supervisor</h2>
+      <p>Una fila por supervisor, PDV y fecha, con la estructura exacta de la plantilla. Solo visitas a PDV de ENTEL: Home Office y las demás cadenas quedan fuera, y las visitas repetidas al mismo PDV el mismo día se unifican en una sola fila.</p>
+      <div class="actions">
+        <div class="field"><label for="zper">Periodo</label><select id="zper"></select></div>
+        <div class="spacer"></div>
+        <button class="btn" id="zxlsx">Descargar Excel</button>
+        <button class="btn ghost" id="zcsv">Descargar CSV</button>
+        <span class="note" id="znote"></span>
+      </div>
+      <div id="zaviso"></div>
+      <div class="prev" id="zprev"></div>
+    </div>
+  </section>
+  <section id="v-dir" class="hidden">
+    <div class="panel">
+      <h2>Directorio de supervisores y promotores</h2>
+      <p>Cruza tu hoja de origen con la ruta de la semana y llena la columna Promotor. Una fila por promotor: si una tienda tiene dos, se generan dos filas. Si no tiene ninguno, la fila sale con el campo vacío.</p>
+      <div class="actions" id="drTelBox" style="margin:0 0 14px">
+        <button class="btn ghost" id="drTelBtn">Cargar base de teléfonos</button>
+        <input type="file" id="drTelFile" accept=".xlsx,.xlsm,.csv" class="hidden">
+        <span class="note" id="drTelNote"></span>
+      </div>
+      <div class="note hidden" id="drAvisoPub">El administrador todavía no ha cargado la plantilla del directorio.</div>
+      <div id="drVacio">
+        <div class="drop" id="drDrop">
+          <div class="big">Arrastra aquí la hoja de origen</div>
+          <div class="sm">o haz clic para elegirla · debe tener las columnas MERCH ID, TIENDA y Promotor</div>
+        </div>
+      </div>
+      <input type="file" id="drFile" accept=".xlsx,.xlsm,.csv" class="hidden">
+      <div id="drListo" class="hidden">
+        <div class="actions">
+          <div class="field"><label for="drSem">Semana</label><select id="drSem"></select></div>
+          <div class="spacer"></div>
+          <button class="btn" id="drXlsx">Descargar Excel</button>
+          <button class="btn ghost" id="drCsv">Descargar CSV</button>
+          <button class="btn ghost" id="drReset">Reemplazar hoja</button>
+        </div>
+        <div class="note" id="drNote" style="padding-top:6px"></div>
+        <div id="drAviso"></div>
+        <div class="prev" id="drPrev"></div>
+      </div>
+    </div>
+  </section>
+  <section id="v-exp" class="hidden">
+    <div class="panel">
+      <h2>Detalle completo del mes</h2>
+      <p>Cada día va al mes al que pertenece por calendario, así que una semana partida se reparte entre dos meses. Una fila por bloque de trabajo.</p>
+      <div class="actions">
+        <div class="field"><label for="fmes">Mes</label><select id="fmes"></select></div>
+        <div class="field"><label for="fsep">Separador</label><select id="fsep"><option value=",">Coma</option><option value=";">Punto y coma</option><option value="&#9;">Tabulación</option></select></div>
+        <div class="field"><label for="fscope">Incluir</label><select id="fscope"><option value="ruta">Solo bloques en ruta</option><option value="all">Todo, con ausencias</option></select></div>
+        <div class="spacer"></div>
+        <button class="btn" id="dl">Descargar CSV</button>
+        <button class="btn ghost" id="copy">Copiar</button>
+        <span class="note" id="expnote"></span>
+      </div>
+      <div class="prev" id="prev"></div>
+    </div>
+  </section>
+</div>
+<dialog id="dlgClave">
+  <div class="dlg-h"><div class="k">Acceso administrador</div><div class="v">Ingresar</div></div>
+  <div class="dlg-b">
+    <p style="margin:0 0 10px;color:var(--muted);font-size:12.5px">Las vistas de carga, cobertura y exportación son solo para el administrador.</p>
+    <input type="password" id="claveInput" placeholder="Clave" autocomplete="current-password">
+    <div class="note" id="claveNota" style="padding-top:8px"></div>
+  </div>
+  <div class="dlg-f"><button class="btn ghost" id="claveCancel">Cancelar</button> <button class="btn" id="claveOk">Entrar</button></div>
+</dialog>
+<dialog id="dlg">
+  <div class="dlg-h"><div class="k" id="dk"></div><div class="v" id="dv"></div></div>
+  <dl class="dlg-b" id="db"></dl>
+  <div class="dlg-f"><button class="btn ghost" id="dclose">Cerrar</button></div>
+</dialog>
+
+<script>
+const REL={"TPFANGAMOS": [260461, "TPF OPEN ANGAMOS"], "TPFCENTROCIVICO": [260450, "TPF-CERCADO"], "TPFCHIMBOTE": [260454, "TPF CHIMBOTE"], "TPFCHORRILLOS": [260464, "TPF CHORRILLOS"], "TPFCOMAS": [260456, "TPF COMAS"], "TPFELPORVENIR": [233819, "TPF-TC TRUPORVENIR"], "TPFICACENTRO": [260460, "KIOSKO TPF ICA CENTRO"], "TPFIQUITOS": [261416, "TPF IQUITOS"], "TPFMALLDELSUR": [260455, "TPF MALL DEL SUR"], "TPFMAPAREQUIPA": [260463, "TPF MAP AREQUIPA"], "TPFMAPCHICLAYO": [261424, "TPF MAP CHICLAYO"], "TPFMAPSJLURIGANCHO": [261414, "TPF_MAPSJLURIGANCHO"], "TPFMEGAPLAZA": [260452, "TPF MEGA PLAZA"], "TPFMINKA": [260457, "TPF MINKA"], "TPFPIURA": [261422, "TPF PIURA"], "TPFPIURAGRAU": [261418, "TPF PIURA GRAU"], "TPFPIURAREAL": [261053, "TPF TC PIUREAL"], "TPFPIZARROTRUJILLO": [263008, "TPF TRUPIZARRO"], "TPFPLAZANORTE2": [260453, "TPF PLAZA NORTE2"], "TPFRPCHICLAYO": [261054, "TPF RP CHICLAYO"], "TPFSANJUANDELURIGANCHO": [260459, "TPF SJ LURIGANCHO"], "TPFSANMIGUEL": [260451, "TPF PLAZA SAN MIGUEL"], "TPFSANTAANITA": [260458, "TPF SANTA ANITA"], "TPFTALARA": [262824, "TPF TALARA"], "TPFTRUJILLOLARCO": [260462, "TPF TRUJILLO LARCO"], "TPFTRUJILLOMALL": [261052, "TPF TRUJILLO"], "TPFTUMBES": [262827, "TPF TUMBES"], "TPFTCCHINCHAITALIA": [252919, "ROM CHINCHA ITALIA 2"]};
+const SUPZOHO={"CESAR ANIBAL BARRENO GARCIA": "CESAR BARRENO", "JULIO MANUEL GONZALES BEDON": "JULIO MANUEL GONZALES BEDON", "NATALIA PRISCILLA VALERA MURILLO": "NATALIA VALERA MURILLO", "WILSON RAY GUTIERREZ SANCA": "WILSON RAY GUTIERREZ SANCA", "SHEYLA STEFANY CASTAÑEDA MONDRAGON": "SHEYLA STEFANY CASTAÑEDA MONDRAGON", "JOSE LUIS ESCRIBA CHIRINOS": "JOSE LUIS ESCRIBA CHIRINOS"};
+
+/* ================= constantes ================= */
+const M0=8*60,M1=22*60,NH=14,SLOT=30,NS=(M1-M0)/SLOT;
+const DIAS=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+const MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const HOJAS_DEF=['JOSE ESCRIBA','JULIO GONZALES','SHEYLA CASTAÑEDA','NATALIA VALERA','WILSON GUTIERREZ','CESAR BARRENO'];
+const CADENAS=['ENTEL','HOME'];
+const CIU={'ANGAMOS':'Lima','CENTRO CIVICO':'Lima','CHIMBOTE':'Chimbote','CHORRILLOS':'Lima','COMAS':'Lima','EL PORVENIR':'Trujillo',
+ 'ICA CENTRO':'Ica','IQUITOS':'Iquitos','MALL DEL SUR':'Lima','MAP AREQUIPA':'Arequipa','MAP CHICLAYO':'Chiclayo','MAP SJ LURIGANCHO':'Lima',
+ 'MEGAPLAZA':'Lima','MINKA':'Callao','PIURA GRAU':'Piura','PIURA REAL':'Piura','PIURA':'Piura','PIZARRO TRUJILLO':'Trujillo',
+ 'PLAZA NORTE 2':'Lima','RP CHICLAYO':'Chiclayo','SAN JUAN DE LURIGANCHO':'Lima','SAN MIGUEL':'Lima','SANTA ANITA':'Lima','TALARA':'Talara',
+ 'TRUJILLO LARCO':'Trujillo','TRUJILLO MALL':'Trujillo','TUMBES':'Tumbes','CHINCHAITALIA':'Chincha','HOME OFFICE':'Remoto'};
+const SINPDV={id:'—',nombre:'Sin PDV asignado',cadena:'—',ciudad:'—'};
+
+/* ================= utilidades ================= */
+const pad=n=>String(n).padStart(2,'0');
+const hm=m=>m==null?'—':pad(Math.floor(m/60))+':'+pad(m%60);
+const norm=v=>{if(v==null)return '';let t=String(v).trim();if(/^(nan|none|#ref!|#name\?|#n\/a)$/i.test(t))return '';
+  if(/^\d+\.0$/.test(t))t=t.slice(0,-2);return t.replace(/\s+/g,' ').toUpperCase()};
+const tit=s=>s.split(' ').map(w=>w.length>3?w[0]+w.slice(1).toLowerCase():w).join(' ');
+const nom=s=>s.split(' ').map(w=>w[0]+w.slice(1).toLowerCase()).join(' ');
+const fmtD=f=>{const[y,m,d]=f.split('-');return d+'/'+m};
+function lunesDe(f){const d=new Date(f+'T00:00:00');d.setDate(d.getDate()-((d.getDay()+6)%7));return d.toISOString().slice(0,10)}
+function diaSem(f){return (new Date(f+'T00:00:00').getDay()+6)%7}
+function sumaDias(f,n){const d=new Date(f+'T00:00:00');d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)}
+function ciudadDe(n){let t=n.includes(' - ')?n.split(' - ').slice(1).join(' - '):n;
+  t=t.replace('TPF-TC ','').replace('TPF ','').trim();
+  for(const k of Object.keys(CIU).sort((a,b)=>b.length-a.length)) if(t.includes(k)) return CIU[k];
+  return 'Otra'}
+function minutos(v){
+  if(v==null||v==='')return null;
+  if(v instanceof Date)return v.getHours()*60+v.getMinutes();
+  if(typeof v==='number')return v>=0&&v<1?Math.round(v*1440):null;
+  const m=String(v).match(/(\d{1,2}):(\d{2})/);return m?+m[1]*60+ +m[2]:null;
+}
+function fechaISO(v){
+  if(v instanceof Date&&!isNaN(v))return `${v.getFullYear()}-${pad(v.getMonth()+1)}-${pad(v.getDate())}`;
+  if(typeof v==='number'){const d=new Date(Date.UTC(1899,11,30+Math.floor(v)));return d.toISOString().slice(0,10)}
+  const s=String(v||'').trim();
+  let m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);if(m)return `${m[1]}-${m[2]}-${m[3]}`;
+  m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);if(m)return `${m[3]}-${pad(m[2])}-${pad(m[1])}`;
+  return null;
+}
+
+/* ================= estado ================= */
+let REG=[];                 // acumulado: un objeto por bloque
+let PEND=null;              // carga pendiente de confirmar
+const st={view:'sup',sem:'',ciudad:'',jefe:'',pdv:'',per:'',dia:'',rol:'',off:true};
+const $=id=>document.getElementById(id);
+const FILTROS={
+  sup:['fsem','fjefe','fdia','frol','foff'],
+  pdv:['fsem','fjefe','fpdv','fper','fdia','frol','foff'],
+  cov:['fsem','fciudad','fjefe','fpdv','fdia','frol','foff']
+};
+const TODOS=['fsem','fciudad','fjefe','fpdv','fper','fdia','frol','foff'];
+function ajustarFiltros(){
+  const ok=FILTROS[st.view];
+  if(!ok)return;
+  let cambio=false;
+  TODOS.forEach(id=>{
+    const w=$('w-'+id); if(!w)return;
+    const on=ok.includes(id);
+    w.classList.toggle('hidden',!on);
+    if(!on&&id!=='foff'&&id!=='fsem'){
+      const k=id.slice(1);
+      if(st[k]!==''){st[k]='';const e=$(id);if(e)e.value='';cambio=true}
+    }
+  });
+  return cambio;
+}
+
+/* ================= persistencia ================= */
+let MODO='publico', CLAVE=null, ACTUALIZADO=null;
+const PUBLICAS=['sup','pdv','dir'];
+const api=(p,o={})=>fetch(p,o).then(async r=>{const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||('Error '+r.status));return j});
+
+async function persistir(){
+  if(MODO!=='admin')return;
+  const n=$('dropnote');
+  try{
+    const r=await api('/api/admin?op=guardar',{method:'POST',
+      headers:{'content-type':'application/json','x-clave':CLAVE},
+      body:JSON.stringify({bloques:REG,directorio:DIR,telefonos:TELS})});
+    ACTUALIZADO=r.actualizado;
+    if(n){n.className='note ok';n.textContent=`Publicado. ${r.bloques} bloques visibles para quien tenga el enlace.`}
+  }catch(e){
+    if(n){n.className='note bad';n.textContent='No se pudo publicar: '+e.message+'. Usa Guardar acumulado para no perder el trabajo.'}
+  }
+}
+let TELINFO=null;
+async function cargarTelefonos(){
+  try{
+    const r=await api('/api/telefonos');
+    if(r.telefonos&&Object.keys(r.telefonos).length){ TELS=r.telefonos; TELINFO=r }
+    else TELINFO=r;
+  }catch(e){ TELINFO={motivo:e.message} }
+}
+async function recuperar(){
+  try{
+    const r=MODO==='admin'
+      ? await api('/api/admin?op=datos',{headers:{'x-clave':CLAVE}})
+      : await api('/api/publico');
+    REG=r.bloques||[]; DIR=r.directorio||null; TELS=r.telefonos||null; ACTUALIZADO=r.actualizado||null;
+    await cargarTelefonos();
+  }catch(e){ REG=[];DIR=null;ACTUALIZADO=null; }
+}
+async function entrar(clave){
+  await api('/api/admin?op=login',{method:'POST',headers:{'x-clave':clave}});
+  MODO='admin';CLAVE=clave;
+  try{sessionStorage.setItem('clave',clave)}catch(e){}
+  await recuperar();derivar();pintarFiltros();render();
+}
+function salir(){
+  MODO='publico';CLAVE=null;
+  try{sessionStorage.removeItem('clave')}catch(e){}
+  if(!PUBLICAS.includes(st.view))st.view='sup';
+  recuperar().then(()=>{derivar();pintarFiltros();render()});
+}
+
+/* ================= lectura del Excel ================= */
+const CAB={cadena:'CADENA',sup:'SUPERVISOR',prom:'NOMBRE DEL PROMOTOR',pdvNom:'NOMBRE DEL PDV',
+  pdvCod:'PDV',dni:'DNI',fecha:'F. JORNADA',jor:'T. DE JORNADA',ini:'HORA INICIO',fin:'HORA FIN',ind:'INDICADOR HORARIO'};
+function mapaCabecera(filas){
+  for(let i=0;i<Math.min(filas.length,20);i++){
+    const f=(filas[i]||[]).map(norm);
+    if(f.includes('CADENA')&&f.includes('NOMBRE DEL PROMOTOR')){
+      const idx={};
+      for(const k in CAB){const j=f.indexOf(CAB[k]);if(j>=0)idx[k]=j}
+      if(idx.prom!=null&&idx.fecha!=null) return {fila:i,idx};
+    }
+  }
+  return null;
+}
+function leerHoja(filas,cab,hoja){
+  const {fila,idx}=cab, out=[];
+  for(let i=fila+1;i<filas.length;i++){
+    const r=filas[i]||[];
+    const g=k=>idx[k]==null?'':r[idx[k]];
+    const prom=norm(g('prom'));if(!prom)continue;
+    const fecha=fechaISO(g('fecha'));if(!fecha)continue;
+    out.push({hoja,cadena:norm(g('cadena')),sup:norm(g('sup')),prom,pdvNom:norm(g('pdvNom')),
+      pdvCod:norm(g('pdvCod')),dni:norm(g('dni')),fecha,jor:norm(g('jor')),
+      ini:minutos(g('ini')),fin:minutos(g('fin')),ind:norm(g('ind'))});
+  }
+  return out;
+}
+function esAusencia(r){const t=r.jor+' '+r.ind;return !r.pdvNom && /VACACION|DESCANSO|FERIADO/.test(t)}
+function estadoDe(r){const t=r.jor+' '+r.ind;
+  if(/VACACION/.test(t))return 'VACACIONES';if(/FERIADO/.test(t))return 'FERIADO';
+  if(/DESCANSO/.test(t))return 'DESCANSO';return r.ind||'SIN DATO'}
+function titularHoja(hoja,sups){
+  const tk=new Set(hoja.replace(/Ñ/g,'N').split(' ').filter(w=>w.length>2));
+  let best='',bn=0;
+  for(const s of sups){const n=s.replace(/Ñ/g,'N').split(' ').filter(w=>tk.has(w)).length;if(n>=2&&n>bn){bn=n;best=s}}
+  return best;
+}
+function procesar(crudas){
+  const sups=new Set(crudas.map(r=>r.sup).filter(Boolean));
+  const titulares=new Set();
+  [...new Set(crudas.map(r=>r.hoja))].forEach(h=>{const t=titularHoja(h,sups);if(t)titulares.add(t)});
+  const enScope=new Set(crudas.filter(r=>CADENAS.includes(r.cadena)).map(r=>r.prom));
+  titulares.forEach(t=>enScope.add(t));
+  const vistas=new Set(), out=[];
+  for(const r of crudas){
+    const aus=esAusencia(r);
+    if(!(CADENAS.includes(r.cadena)||(aus&&enScope.has(r.prom)))) continue;
+    if(aus){const k=r.prom+'|'+r.fecha; if(vistas.has(k))continue; vistas.add(k)}
+    const rol=(sups.has(r.prom)||titulares.has(r.prom))?'supervisor':'promotor';
+    const cod=r.pdvNom?(r.pdvCod||'SC-'+r.pdvNom.slice(0,14).replace(/\s/g,'')):'';
+    const jefe=(r.sup&&r.sup!==r.prom)?r.sup:(titularHoja(r.hoja,sups)||'');
+    out.push({k:[r.fecha,r.dni||r.prom,cod,r.ini==null?'':r.ini].join('|'),
+      fecha:r.fecha,d:diaSem(r.fecha),sem:lunesDe(r.fecha),mes:r.fecha.slice(0,7),
+      ini:r.ini,fin:r.fin,est:estadoDe(r),jor:tit(r.jor),rol,
+      persona:nom(r.prom),dni:r.dni,jefe:jefe?nom(jefe):'',hoja:nom(r.hoja),
+      pdvCod:cod,pdvNom:r.pdvNom?tit(r.pdvNom):'',cadena:r.cadena,ciudad:r.pdvNom?ciudadDe(r.pdvNom):''});
+  }
+  return out;
+}
+
+/* ================= catálogos derivados ================= */
+let PDV={},PER={},SEMANAS=[],CIUDADES=[],JEFES=[],MESESD=[];
+function derivar(){
+  PDV={};PER={};
+  const npdv={};
+  REG.forEach(r=>{
+    if(r.pdvCod&&!PDV[r.pdvCod]) PDV[r.pdvCod]={id:r.pdvCod,nombre:r.pdvNom,cadena:r.cadena,ciudad:r.ciudad};
+    const pid=r.dni||r.persona;
+    if(!PER[pid]) PER[pid]={id:pid,nombre:r.persona,rol:r.rol,jefe:r.jefe,dni:r.dni};
+    if(r.rol==='supervisor') PER[pid].rol='supervisor';
+    if(r.jefe&&!PER[pid].jefe) PER[pid].jefe=r.jefe;
+    if(r.pdvCod){(npdv[pid]=npdv[pid]||new Set()).add(r.pdvCod)}
+    r.pid=pid;
+  });
+  Object.values(PER).forEach(p=>{const n=npdv[p.id]?npdv[p.id].size:0;p.npdv=n;
+    p.asignacion=p.rol==='supervisor'?'ruta':(n===1?'fijo':n>1?'rotativo':'sin pdv')});
+  SEMANAS=[...new Set(REG.map(r=>r.sem))].sort().reverse();
+  MESESD=[...new Set(REG.map(r=>r.mes))].sort().reverse();
+  CIUDADES=[...new Set(Object.values(PDV).map(p=>p.ciudad))].filter(Boolean).sort();
+  JEFES=[...new Set(REG.map(r=>r.jefe).filter(Boolean))].sort();
+  if(!SEMANAS.includes(st.sem)) st.sem=SEMANAS[0]||'';
+}
+const enRuta=r=>r.est==='EN RUTA'&&r.ini!=null&&r.fin!=null;
+
+/* ================= filtros ================= */
+function opt(sel,items,ph){sel.innerHTML='';sel.add(new Option(ph,''));items.forEach(([v,l])=>sel.add(new Option(l,v)))}
+function pintarFiltros(){
+  opt($('fsem'),SEMANAS.map(s=>[s,'Del '+fmtD(s)+' al '+fmtD(sumaDias(s,6))]),'Sin semanas');
+  $('fsem').value=st.sem;
+  opt($('fciudad'),CIUDADES.map(c=>[c,c]),'Todas');
+  opt($('fjefe'),JEFES.map(j=>[j,j]),'Todos');
+  const ps=Object.values(PDV).filter(p=>!st.ciudad||p.ciudad===st.ciudad).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  opt($('fpdv'),ps.map(p=>[p.id,p.nombre]),'Todos ('+ps.length+')');
+  const gente=Object.values(PER).filter(p=>!st.jefe||p.jefe===st.jefe||p.nombre===st.jefe)
+    .sort((a,b)=>a.rol.localeCompare(b.rol)||a.nombre.localeCompare(b.nombre));
+  opt($('fper'),gente.map(p=>[p.id,p.nombre+' · '+p.rol]),'Todas');
+  opt($('fdia'),DIAS.map((d,i)=>[i,d]),'Toda la semana');
+  opt($('frol'),[['supervisor','Solo supervisores'],['promotor','Solo promotores']],'Supervisores y promotores');
+  ['fciudad','fjefe','fpdv','fper','fdia','frol'].forEach(id=>$(id).value=st[id.slice(1)]);
+  $('foff').checked=st.off;
+  opt($('fmes'),MESESD.map(m=>[m,MESES[+m.slice(5)-1]+' '+m.slice(0,4)]),'Todos los meses');
+  if(MESESD.length)$('fmes').value=MESESD[0];
+}
+function semana(){return REG.filter(r=>r.sem===st.sem)}
+function aplicar(list){
+  return list.filter(r=>{
+    if(st.ciudad&&r.ciudad!==st.ciudad)return false;
+    if(st.pdv&&r.pdvCod!==st.pdv)return false;
+    if(st.jefe&&r.jefe!==st.jefe&&r.persona!==st.jefe)return false;
+    if(st.per&&r.pid!==st.per)return false;
+    if(st.dia!==''&&r.d!==+st.dia)return false;
+    if(st.rol&&r.rol!==st.rol)return false;
+    if(!st.off&&!enRuta(r))return false;
+    return true;
+  });
+}
+
+/* ================= indicadores ================= */
+function stats(){
+  const vs=aplicar(semana()),ruta=vs.filter(enRuta);
+  const horas=ruta.reduce((a,r)=>a+(r.fin-r.ini)/60,0);
+  const univ=Object.values(PDV).filter(p=>(!st.ciudad||p.ciudad===st.ciudad)&&(!st.pdv||p.id===st.pdv));
+  const conProm=new Set(semana().filter(r=>enRuta(r)&&r.rol==='promotor').map(r=>r.pdvCod));
+  const sin=univ.filter(p=>!conProm.has(p.id)).length;
+  $('stats').innerHTML=[
+    ['Bloques en ruta',ruta.length,0],['Horas programadas',Math.round(horas)+' h',0],
+    ['Puntos de venta',univ.length,0],['Personas activas',new Set(ruta.map(r=>r.pid)).size,0],
+    ['Ausencias',vs.filter(r=>!enRuta(r)).length,0],['PDV sin promotor',sin,sin>0?1:0]
+  ].map(([k,n,w])=>`<div class="stat ${w?'warn':''}"><div class="n">${n}</div><div class="k">${k}</div></div>`).join('');
+}
+
+/* ================= tablero ================= */
+function carriles(bs){
+  const s=[...bs].sort((a,b)=>(a.ini??0)-(b.ini??0)||(a.fin??0)-(b.fin??0));
+  const ends=[];
+  s.forEach(b=>{const i=b.ini??M0,f=b.fin??M1;let l=0;while(ends[l]!==undefined&&ends[l]>i)l++;ends[l]=f;b._l=l});
+  return{bs:s,n:Math.max(1,ends.length)};
+}
+function bloque(r,modo){
+  const p=PER[r.pid],e=document.createElement('button');
+  const etq=modo==='sup'?(r.pdvNom||'Sin PDV'):r.persona;
+  if(!enRuta(r)){
+    e.className='blk off';e.style.gridRow=(r._l||0)+1;e.disabled=true;
+    const t={VACACIONES:'Vacaciones',DESCANSO:'Descanso semanal',FERIADO:'Feriado'}[r.est]||'Sin horario';
+    e.innerHTML=`<span class="l">${t}${r.pdvNom?' · '+etq:''}</span>`;return e;
+  }
+  const c0=Math.max(0,Math.round((r.ini-M0)/SLOT)),c1=Math.min(NS,Math.round((r.fin-M0)/SLOT));
+  e.className='blk '+(r.rol==='supervisor'?'sup':'prom')+(p.asignacion==='rotativo'?' rot':'');
+  e.style.gridColumn=(c0+1)+' / span '+Math.max(1,c1-c0);e.style.gridRow=(r._l||0)+1;
+  e.title=`${hm(r.ini)} – ${hm(r.fin)}`;
+  e.innerHTML=`<span class="l">${etq}</span>`;
+  e.onclick=()=>detalle(r);return e;
+}
+function fila(lab,meta,bs,modo){
+  const{bs:s,n}=carriles(bs),row=document.createElement('div');row.className='row';
+  row.innerHTML=`<div class="rowlabel"><span class="n">${lab}</span><span class="m">${meta}</span></div>`;
+  const tr=document.createElement('div');tr.className='track';
+  tr.style.gridTemplateColumns='repeat('+NS+',minmax(0,1fr))';
+  tr.style.gridTemplateRows='repeat('+n+',30px)';
+  for(let i=0;i<NH;i++){const k=document.createElement('div');k.className='tick';k.style.gridColumn=(i*2+1)+' / span 2';tr.appendChild(k)}
+  s.forEach(r=>tr.appendChild(bloque(r,modo)));
+  row.appendChild(tr);return row;
+}
+function tablero(){
+  const g=$('grid');g.innerHTML='';const modo=st.view;
+  const porDia=modo==='pdv'&&st.pdv&&st.dia==='';
+  const rl=document.createElement('div');rl.className='ruler';
+  rl.innerHTML=`<div class="corner">${porDia?'Día':(modo==='sup'?'Persona':'Punto de venta')}</div>`+
+    [...Array(NH)].map((_,i)=>`<div class="h">${pad(8+i)}</div>`).join('');
+  g.appendChild(rl);
+  let vs=aplicar(semana());
+  if(modo==='pdv')vs=vs.filter(r=>r.pdvCod);
+  if(!REG.length){g.insertAdjacentHTML('beforeend',(MODO==='admin'?'<div class="empty">Todavía no hay datos. Ve a <b>Cargar semana</b> y sube el Excel de rutas.</div>':'<div class="empty">Todavía no hay horarios publicados.</div>'));return}
+  if(!vs.length){g.insertAdjacentHTML('beforeend','<div class="empty">Ningún bloque cumple estos filtros. Prueba con otra ciudad, otro supervisor, o limpia los filtros.</div>');return}
+  if(porDia){
+    DIAS.forEach((d,i)=>{const bs=vs.filter(r=>r.d===i);
+      g.appendChild(fila(d,fmtD(sumaDias(st.sem,i))+' · '+bs.filter(enRuta).length+' en ruta',bs,'pdv'))});
+    return;
+  }
+  (st.dia===''?[0,1,2,3,4,5,6]:[+st.dia]).forEach(d=>{
+    const dd=vs.filter(r=>r.d===d);
+    const gr=document.createElement('div');gr.className='daygroup';
+    gr.innerHTML=`<div class="d">${DIAS[d]}</div><div class="dd">${fmtD(sumaDias(st.sem,d))} · ${dd.filter(enRuta).length} bloques en ruta</div>`;
+    g.appendChild(gr);
+    if(!dd.length){g.insertAdjacentHTML('beforeend','<div class="empty">Sin registros este día.</div>');return}
+    if(modo==='sup'){
+      const ids=[...new Set(dd.map(r=>r.pid))].sort((a,b)=>PER[a].rol.localeCompare(PER[b].rol)||PER[a].nombre.localeCompare(PER[b].nombre));
+      ids.forEach(id=>{const p=PER[id],bs=dd.filter(r=>r.pid===id);
+        const h=bs.filter(enRuta).reduce((a,r)=>a+(r.fin-r.ini)/60,0);
+        const meta=p.rol==='supervisor'?`supervisor · ${bs.filter(enRuta).length} PDV en ruta`:`promotor ${p.asignacion} · ${h?Math.round(h*10)/10+' h':'—'}`;
+        g.appendChild(fila(p.nombre,meta,bs,'sup'))});
+    }else{
+      const ids=[...new Set(dd.map(r=>r.pdvCod))].sort((a,b)=>PDV[a].nombre.localeCompare(PDV[b].nombre));
+      ids.forEach(id=>{const t=PDV[id];g.appendChild(fila(t.nombre,t.ciudad+' · '+t.id,dd.filter(r=>r.pdvCod===id),'pdv'))});
+    }
+  });
+}
+function cobertura(){
+  const univ=Object.values(PDV).filter(p=>(!st.ciudad||p.ciudad===st.ciudad)&&(!st.pdv||p.id===st.pdv))
+    .sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  const sem=semana();
+  const head='<thead><tr><th>Punto de venta</th><th>Ciudad</th>'+DIAS.map(d=>`<th>${d.slice(0,3)}</th>`).join('')+'<th>Horas</th><th>Estado</th></tr></thead>';
+  const body=univ.map(t=>{
+    let tot=0;
+    const c=DIAS.map((_,d)=>{
+      const bs=sem.filter(r=>r.pdvCod===t.id&&r.d===d&&enRuta(r));
+      const hp=bs.filter(r=>r.rol==='promotor').reduce((a,r)=>a+(r.fin-r.ini)/60,0);
+      const ns=bs.filter(r=>r.rol==='supervisor').length;tot+=hp;
+      return `<td class="num ${hp===0?'gap':hp<8?'thin':''}">${hp?Math.round(hp)+'h':'—'}${ns?` <span style="color:var(--sup)">S${ns}</span>`:''}</td>`;
+    }).join('');
+    const ok=tot>=40;
+    return `<tr><td>${t.nombre}</td><td>${t.ciudad}</td>${c}<td class="num">${Math.round(tot)}</td><td><span class="pill ${ok?'ok':'bad'}">${ok?'Cubierto':'Revisar'}</span></td></tr>`;
+  }).join('');
+  $('covtable').innerHTML=head+'<tbody>'+body+'</tbody>';
+}
+
+/* ================= carga del Excel ================= */
+function abrirArchivo(f){
+  const nota=$('dropnote');nota.className='note';nota.textContent='Leyendo '+f.name+'…';
+  const fr=new FileReader();
+  fr.onload=ev=>{
+    try{
+      const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array',cellDates:true});
+      const hojas=[];
+      wb.SheetNames.forEach(n=>{
+        const filas=XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:true,cellDates:true,defval:null,blankrows:false});
+        const cab=mapaCabecera(filas);
+        if(cab){const crudas=leerHoja(filas,cab,norm(n));
+          if(crudas.length)hojas.push({nombre:norm(n),crudas,marcada:HOJAS_DEF.includes(norm(n))})}
+      });
+      if(!hojas.length){nota.className='note bad';nota.textContent='No se encontró ninguna hoja con la cabecera de ruta. Revisa que el archivo tenga las columnas CADENA y NOMBRE DEL PROMOTOR.';return}
+      PEND={archivo:f.name,hojas};
+      if(!hojas.some(h=>h.marcada))hojas.forEach(h=>h.marcada=true);
+      pintarHojas();nota.textContent=f.name+' · '+hojas.length+' hojas con estructura de ruta';
+    }catch(e){nota.className='note bad';nota.textContent='No se pudo leer el archivo: '+e.message}
+  };
+  fr.readAsArrayBuffer(f);
+}
+function pintarHojas(){
+  $('sheetbox').classList.remove('hidden');
+  $('sheets').innerHTML=PEND.hojas.map((h,i)=>
+    `<label class="${h.marcada?'on':''}" data-i="${i}"><input type="checkbox" ${h.marcada?'checked':''}> ${nom(h.nombre)} <span class="c">${h.crudas.length}</span></label>`).join('');
+  $('sheets').querySelectorAll('label').forEach(l=>{
+    l.querySelector('input').onchange=e=>{PEND.hojas[+l.dataset.i].marcada=e.target.checked;l.classList.toggle('on',e.target.checked);previsualizar()};
+  });
+  previsualizar();
+}
+function previsualizar(){
+  const crudas=PEND.hojas.filter(h=>h.marcada).flatMap(h=>h.crudas);
+  const nuevos=procesar(crudas);
+  PEND.nuevos=nuevos;
+  const sem=[...new Set(nuevos.map(r=>r.sem))].sort();
+  const dup=nuevos.filter(r=>REG.some(x=>x.k===r.k)).length;
+  const n=$('loadnote');n.className='note';
+  n.innerHTML=nuevos.length?`${nuevos.length} bloques · semanas ${sem.map(s=>fmtD(s)).join(', ')} · ${dup?dup+' reemplazan registros existentes':'ninguno duplicado'}`
+    :'Las hojas marcadas no tienen filas de ENTEL ni HOME.';
+  $('doload').disabled=!nuevos.length;
+}
+function confirmarCarga(){
+  const nuevos=PEND.nuevos||[];
+  const llaves=new Set(nuevos.map(r=>r.k));
+  const antes=REG.length;
+  REG=REG.filter(r=>!llaves.has(r.k)).concat(nuevos);
+  cerrarCarga();
+  derivar();st.sem=[...new Set(nuevos.map(r=>r.sem))].sort().reverse()[0]||st.sem;
+  persistir();pintarFiltros();render();
+  const n=$('dropnote');n.className='note ok';
+  n.textContent=`Cargado. El acumulado pasó de ${antes} a ${REG.length} bloques en ${SEMANAS.length} semanas.`;
+}
+function cerrarCarga(){PEND=null;$('sheetbox').classList.add('hidden');$('file').value=''}
+
+/* ================= acumulado ================= */
+function bajar(nombre,txt,tipo){
+  const b=new Blob(['\ufeff'+txt],{type:tipo+';charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=nombre;
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+}
+function pintarSemanas(){
+  if(!SEMANAS.length){$('weeks').innerHTML='<tr><td class="note">Todavía no hay semanas cargadas.</td></tr>';return}
+  $('weeks').innerHTML='<thead><tr><th>Semana</th><th>Mes</th><th>Bloques</th><th>En ruta</th><th>Personas</th><th>PDV</th><th></th></tr></thead><tbody>'+
+    SEMANAS.map(s=>{const r=REG.filter(x=>x.sem===s);
+      const meses=[...new Set(r.map(x=>x.mes))].map(m=>MESES[+m.slice(5)-1]).join(' y ');
+      return `<tr><td>Del ${fmtD(s)} al ${fmtD(sumaDias(s,6))}</td><td>${meses}</td><td class="num">${r.length}</td>
+      <td class="num">${r.filter(enRuta).length}</td><td class="num">${new Set(r.map(x=>x.pid)).size}</td>
+      <td class="num">${new Set(r.filter(x=>x.pdvCod).map(x=>x.pdvCod)).size}</td>
+      <td><button class="btn ghost" data-sem="${s}" style="padding:4px 9px">Quitar</button></td></tr>`}).join('')+'</tbody>';
+  $('weeks').querySelectorAll('button[data-sem]').forEach(b=>b.onclick=()=>{
+    REG=REG.filter(r=>r.sem!==b.dataset.sem);derivar();persistir();pintarFiltros();render();
+  });
+}
+function alertas(){
+  const sem=semana();
+  if(!sem.length){$('alertas').innerHTML='<li>Carga una semana para ver los hallazgos.</li>';return}
+  const sinProm=Object.values(PDV).filter(p=>!sem.some(r=>r.pdvCod===p.id&&r.rol==='promotor'&&enRuta(r)));
+  const porDia={};sem.filter(r=>enRuta(r)&&r.rol==='promotor').forEach(r=>{const k=r.pid+'|'+r.d;(porDia[k]=porDia[k]||[]).push(r)});
+  const dobles=Object.values(porDia).filter(b=>b.length>1).map(b=>b[0].persona+' el '+DIAS[b[0].d]);
+  const incompletos=Object.values(PER).map(p=>({p,d:new Set(sem.filter(r=>r.pid===p.id).map(r=>r.d)).size}))
+    .filter(x=>x.d>0&&x.d<7).map(x=>x.p.nombre+' ('+x.d+' días)');
+  const sinHora=sem.filter(r=>r.est==='EN RUTA'&&r.ini==null).length;
+  const li=[];
+  li.push(`<b>Las visitas de supervisor no traen hora por PDV.</b> El archivo repite su jornada completa en cada punto del día, así que se muestran como franja rayada sobre toda la jornada.`);
+  li.push(sinProm.length?`<b>${sinProm.length} PDV sin promotor en ruta:</b> ${sinProm.slice(0,6).map(p=>p.nombre).join(', ')}${sinProm.length>6?'…':''}.`:`Todos los PDV tienen promotor en ruta.`);
+  li.push(incompletos.length?`<b>${incompletos.length} personas con menos de 7 días registrados:</b> ${incompletos.slice(0,5).join(', ')}${incompletos.length>5?'…':''}.`:`Todas las personas tienen los 7 días registrados.`);
+  li.push(dobles.length?`<b>${dobles.length} casos de promotor en dos PDV el mismo día</b>, por ejemplo ${dobles.slice(0,3).join('; ')}. Verifica si es rotación o duplicado.`:`Ningún promotor aparece en dos PDV el mismo día.`);
+  if(sinHora)li.push(`<b>${sinHora} filas marcadas en ruta sin hora de inicio.</b> Aparecen como “Sin horario”.`);
+  li.push(`Las filas con PDV de otras cadenas quedan fuera por diseño. Si un supervisor pasa el día en Bitel o Claro, su ruta se verá vacía ese día.`);
+  $('alertas').innerHTML=li.map(x=>`<li>${x}</li>`).join('');
+}
+
+/* ================= exportación ================= */
+const COLS=['id_bloque','fecha','dia','mes','semana','hora_inicio','hora_fin','horas','estado','tipo_jornada','rol','asignacion',
+  'persona','dni','supervisor_a_cargo','pdv_codigo','pdv_nombre','cadena','ciudad','hora_visita_exacta'];
+function filas(){
+  const mes=$('fmes').value,scope=$('fscope').value;
+  let r=REG.filter(x=>!mes||x.mes===mes);
+  if(scope==='ruta')r=r.filter(enRuta);
+  return r.sort((a,b)=>a.fecha.localeCompare(b.fecha)||(a.ini??0)-(b.ini??0)||a.persona.localeCompare(b.persona))
+    .map(x=>[x.k,x.fecha,DIAS[x.d],x.mes,x.sem,hm(x.ini),hm(x.fin),
+      x.ini!=null&&x.fin!=null?Math.round((x.fin-x.ini)/6)/10:'',x.est,x.jor,x.rol,PER[x.pid].asignacion,
+      x.persona,x.dni,x.jefe,x.pdvCod,x.pdvNom,x.cadena,x.ciudad,x.rol==='supervisor'?'no':'si']);
+}
+function csv(sep){
+  const esc=v=>{v=String(v??'');return /["\n\r]/.test(v)||v.includes(sep)?'"'+v.replace(/"/g,'""')+'"':v};
+  return [COLS.join(sep),...filas().map(r=>r.map(esc).join(sep))].join('\r\n');
+}
+function pintarPrev(){
+  const rs=filas();
+  $('prev').innerHTML='<table><tr>'+COLS.map(c=>`<th>${c}</th>`).join('')+'</tr>'+
+    rs.slice(0,25).map(r=>'<tr>'+r.map(c=>`<td>${c}</td>`).join('')+'</tr>').join('')+'</table>';
+  const n=$('expnote');n.className='note';
+  n.textContent=rs.length?rs.length+' filas · vista previa de 25':'No hay filas para este mes.';
+}
+
+/* ================= detalle ================= */
+function detalle(r){
+  const p=PER[r.pid];
+  $('dk').textContent=r.rol==='supervisor'?'Supervisor en ruta':'Turno de promotor';
+  $('dv').textContent=r.pdvNom||'Sin PDV asignado';
+  const f=[['Persona',r.persona],['DNI',r.dni||'—'],['Rol',r.rol+(r.rol==='promotor'?' · '+p.asignacion:'')],
+    ['Supervisor',r.jefe||'—'],['Fecha',DIAS[r.d]+' '+r.fecha],
+    ['Jornada',hm(r.ini)+' – '+hm(r.fin)],['Tipo',r.jor||'—'],
+    ['Cadena',(r.cadena||'—')+(r.ciudad?' · '+r.ciudad:'')],['Código PDV',r.pdvCod||'—'],['Origen','Hoja '+r.hoja]];
+  if(r.rol==='supervisor')f.push(['Nota','La hora es la jornada del supervisor, no la de la visita a este PDV.']);
+  $('db').innerHTML=f.map(([k,v])=>`<dt>${k}</dt><dd>${v}</dd>`).join('');
+  $('dlg').showModal();
+}
+
+/* ================= render ================= */
+function render(){
+  const admin=MODO==='admin';
+  if(!admin&&!PUBLICAS.includes(st.view))st.view='sup';
+  document.querySelectorAll('.tab').forEach(b=>{
+    const vis=admin||PUBLICAS.includes(b.dataset.view);
+    b.classList.toggle('hidden',!vis);
+    b.setAttribute('aria-selected',b.dataset.view===st.view);
+  });
+  $('btnSesion').textContent=admin?'Salir':'Ingresar';
+  const fecha=ACTUALIZADO?new Date(ACTUALIZADO).toLocaleDateString('es-PE',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):null;
+  $('stamp').textContent=REG.length
+    ? `${REG.length} bloques · ${SEMANAS.length} semana${SEMANAS.length>1?'s':''}${fecha?' · act. '+fecha:''}`
+    : 'Sin datos publicados';
+  const av=$('avisoPub');
+  const vacio=!admin&&!REG.length;
+  av.classList.toggle('hidden',!vacio);
+  if(vacio) av.textContent='Todavía no hay horarios publicados.';
+  const board=st.view==='sup'||st.view==='pdv';
+  ajustarFiltros();
+  $('bar').classList.toggle('hidden',!board&&st.view!=='cov');
+  $('stats').classList.toggle('hidden',!board&&st.view!=='cov');
+  $('v-board').classList.toggle('hidden',!board);
+  $('v-cov').classList.toggle('hidden',st.view!=='cov');
+  $('v-load').classList.toggle('hidden',st.view!=='load');
+  $('v-exp').classList.toggle('hidden',st.view!=='exp');
+  $('v-zoho').classList.toggle('hidden',st.view!=='zoho');
+  $('v-dir').classList.toggle('hidden',st.view!=='dir');
+  if(board||st.view==='cov')stats();
+  if(board)tablero();
+  if(st.view==='cov')cobertura();
+  if(st.view==='load'){pintarSemanas();alertas()}
+  if(st.view==='dir')pintarDirectorio();
+  if(st.view==='zoho'){const p=zohoPeriodos(),cur=$('zper').value;opt($('zper'),p,'Todo el acumulado');if(cur)$('zper').value=cur;else if(p.length)$('zper').value=p[0][0];pintarZoho()}
+  if(st.view==='exp')pintarPrev();
+}
+
+/* ================= eventos ================= */
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{st.view=b.dataset.view;render()});
+$('fsem').onchange=e=>{st.sem=e.target.value;render()};
+$('fciudad').onchange=e=>{st.ciudad=e.target.value;st.pdv='';pintarFiltros();render()};
+$('fjefe').onchange=e=>{st.jefe=e.target.value;st.per='';pintarFiltros();render()};
+$('fpdv').onchange=e=>{st.pdv=e.target.value;render()};
+$('fper').onchange=e=>{st.per=e.target.value;render()};
+$('fdia').onchange=e=>{st.dia=e.target.value;render()};
+$('frol').onchange=e=>{st.rol=e.target.value;render()};
+$('foff').onchange=e=>{st.off=e.target.checked;render()};
+$('reset').onclick=()=>{Object.assign(st,{ciudad:'',jefe:'',pdv:'',per:'',dia:'',rol:'',off:true});pintarFiltros();render()};
+const drop=$('drop');
+drop.onclick=()=>$('file').click();
+drop.ondragover=e=>{e.preventDefault();drop.classList.add('over')};
+drop.ondragleave=()=>drop.classList.remove('over');
+drop.ondrop=e=>{e.preventDefault();drop.classList.remove('over');if(e.dataTransfer.files[0])abrirArchivo(e.dataTransfer.files[0])};
+$('file').onchange=e=>{if(e.target.files[0])abrirArchivo(e.target.files[0])};
+$('doload').onclick=confirmarCarga;
+$('cancel').onclick=()=>{cerrarCarga();$('dropnote').textContent=''};
+$('save').onclick=()=>{bajar('acumulado-rutas.json',JSON.stringify({bloques:REG,directorio:DIR,telefonos:TELS}),'application/json');
+  $('accnote').className='note ok';$('accnote').textContent='Acumulado guardado'};
+$('loadacc').onclick=()=>$('accfile').click();
+$('accfile').onchange=e=>{const f=e.target.files[0];if(!f)return;const fr=new FileReader();
+  fr.onload=ev=>{try{const p=JSON.parse(ev.target.result);const j=Array.isArray(p)?p:(p.bloques||[]);
+    if(!Array.isArray(j))throw new Error('formato inesperado');
+    if(!Array.isArray(p)&&p.directorio)DIR=p.directorio;
+    if(!Array.isArray(p)&&p.telefonos)TELS=p.telefonos;
+    const llaves=new Set(j.map(r=>r.k));REG=REG.filter(r=>!llaves.has(r.k)).concat(j);
+    derivar();persistir();pintarFiltros();render();
+    $('accnote').className='note ok';$('accnote').textContent=REG.length+' bloques en el acumulado';
+  }catch(err){$('accnote').className='note bad';$('accnote').textContent='No se pudo leer: '+err.message}};
+  fr.readAsText(f);e.target.value=''};
+$('wipe').onclick=()=>{if(!confirm('Se borran todas las semanas cargadas. ¿Continuar?'))return;
+  REG=[];derivar();persistir();pintarFiltros();render();
+  $('accnote').className='note';$('accnote').textContent='Acumulado vacío'};
+$('fmes').onchange=pintarPrev;$('fscope').onchange=pintarPrev;
+$('dl').onclick=()=>{const m=$('fmes').value||'todo';bajar('rutas-'+m+'.csv',csv($('fsep').value),'text/csv');
+  $('expnote').className='note ok';$('expnote').textContent='Archivo generado'};
+$('copy').onclick=async()=>{try{await navigator.clipboard.writeText(csv($('fsep').value));
+  $('expnote').className='note ok';$('expnote').textContent='Copiado'}
+  catch{$('expnote').className='note';$('expnote').textContent='El navegador bloqueó el portapapeles. Usa Descargar CSV.'}};
+$('dclose').onclick=()=>$('dlg').close();
+
+/* ================= arranque ================= */
+$('btnSesion').onclick=()=>{
+  if(MODO==='admin'){salir();return}
+  $('claveNota').textContent='';$('claveInput').value='';$('dlgClave').showModal();
+  setTimeout(()=>$('claveInput').focus(),50);
+};
+$('claveCancel').onclick=()=>$('dlgClave').close();
+$('claveInput').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();$('claveOk').click()}};
+$('claveOk').onclick=async()=>{
+  const n=$('claveNota');n.className='note';n.textContent='Verificando…';
+  try{ await entrar($('claveInput').value); $('dlgClave').close() }
+  catch(e){ n.className='note bad';n.textContent=e.message }
+};
+
+(async()=>{
+  let g=null; try{g=sessionStorage.getItem('clave')}catch(e){}
+  if(g){ try{ await entrar(g) }catch(e){ try{sessionStorage.removeItem('clave')}catch(_){} } }
+  if(MODO!=='admin'){ await recuperar();derivar();pintarFiltros();render() }
+})();
+
+/* ================= pre-carga ZOHO ================= */
+function keyPDV(s){
+  s=String(s||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  s=s.replace(/^(ENTEL|HOME OFFICE|MOVISTAR|BITEL|CLARO|ISLA BITEL|KIOSKOS|OFICINAS|ISLA)\s*-\s*/,'');
+  return s.replace(/[^A-Z0-9]/g,'');
+}
+const ZCOLS=['MERCHANT ID','MERCHANT NAME','Fecha de Visita','Supervisor','Tipo interaccion','Revisar'];
+function zohoPeriodos(){
+  const p=[];
+  MESESD.forEach(m=>p.push(['M'+m,'Mes de '+MESES[+m.slice(5)-1]+' '+m.slice(0,4)]));
+  SEMANAS.forEach(s=>p.push(['S'+s,'Semana del '+fmtD(s)+' al '+fmtD(sumaDias(s,6))]));
+  return p;
+}
+function zohoDatos(){
+  const v=$('zper').value||'';
+  let base=REG.filter(r=>r.rol==='supervisor'&&enRuta(r)&&r.pdvCod);
+  if(v.startsWith('M'))base=base.filter(r=>r.mes===v.slice(1));
+  else if(v.startsWith('S'))base=base.filter(r=>r.sem===v.slice(1));
+  const vistas=new Set(),filas=[],faltan=new Map(),fuera=new Set();
+  base.forEach(r=>{
+    const rel=REL[keyPDV(r.pdvNom)];
+    if(!rel){
+      if(r.cadena==='ENTEL')faltan.set(r.pdvNom,(faltan.get(r.pdvNom)||0)+1);
+      else fuera.add(r.pdvNom);
+      return;
+    }
+    const sup=SUPZOHO[r.persona.toUpperCase()]||r.persona.toUpperCase();
+    const k=rel[0]+'|'+r.fecha+'|'+sup;
+    if(vistas.has(k))return; vistas.add(k);
+    filas.push([rel[0],rel[1],r.fecha,sup,'VISITA','']);
+  });
+  filas.sort((a,b)=>a[3].localeCompare(b[3])||a[2].localeCompare(b[2])||String(a[1]).localeCompare(String(b[1])));
+  const diag={
+    total:REG.length,
+    sup:REG.filter(r=>r.rol==='supervisor').length,
+    supRuta:REG.filter(r=>r.rol==='supervisor'&&enRuta(r)).length,
+    conPdv:REG.filter(r=>r.rol==='supervisor'&&enRuta(r)&&r.pdvCod).length,
+    enPeriodo:base.length,
+    rel:(typeof REL==='object'&&REL)?Object.keys(REL).length:0,
+    periodo:v||'(todo)'
+  };
+  return{filas,faltan,fuera,bloques:base.length,diag};
+}
+function pintarZoho(){
+  let d;
+  try{ d=zohoDatos() }
+  catch(e){
+    $('znote').className='note bad';
+    $('znote').textContent='Error al generar: '+e.message;
+    $('zaviso').innerHTML='';$('zprev').innerHTML='';
+    $('zxlsx').disabled=true;$('zcsv').disabled=true;
+    return;
+  }
+  const{filas,faltan,fuera,bloques,diag}=d;
+  $('znote').className='note';
+  $('znote').textContent=filas.length?`${filas.length} filas · de ${bloques} bloques de visita`:'No se generó ninguna fila en este periodo.';
+  const av=[];
+  if(faltan.size)av.push(`<b>${faltan.size} PDV de ENTEL sin merchant asignado</b>, así que sus visitas no salen en el archivo: ${[...faltan.keys()].join(', ')}. Hay que agregarlos a la tabla de relación.`);
+  if(fuera.size)av.push(`${fuera.size} PDV fuera de ENTEL quedaron excluidos, como corresponde: ${[...fuera].slice(0,4).join(', ')}${fuera.size>4?'…':''}.`);
+  if(!filas.length)av.push(`<b>Diagnóstico.</b> Bloques cargados: ${diag.total}. De supervisor: ${diag.sup}. En ruta: ${diag.supRuta}. Con PDV: ${diag.conPdv}. Dentro del periodo ${diag.periodo}: ${diag.enPeriodo}. Tabla de merchants: ${diag.rel} tiendas. El primer número que salga en cero indica dónde se corta.`);
+  $('zaviso').innerHTML=av.length?`<ul style="margin:12px 0 0;padding-left:18px;font-size:12.5px;color:var(--muted);max-width:82ch">${av.map(x=>`<li style="margin-bottom:5px">${x}</li>`).join('')}</ul>`:'';
+  $('zprev').innerHTML=filas.length?('<table><tr>'+ZCOLS.map(c=>`<th>${c}</th>`).join('')+'</tr>'+
+    filas.slice(0,30).map(r=>'<tr>'+r.map((c,i)=>`<td>${i===2?fmtD(c)+'/'+c.slice(0,4):c}</td>`).join('')+'</tr>').join('')+'</table>'):'';
+  $('zxlsx').disabled=!filas.length;$('zcsv').disabled=!filas.length;
+}
+function zohoNombre(ext){
+  const v=$('zper').value||'';
+  return 'Pre-Carga_ZOHO_'+(v?v.slice(1).replace(/-/g,''):'todo')+'.'+ext;
+}
+$('zper').onchange=pintarZoho;
+$('zxlsx').onclick=()=>{
+  let filas;try{filas=zohoDatos().filas}catch(e){$('znote').className='note bad';$('znote').textContent='Error: '+e.message;return}
+  if(!filas.length){$('znote').className='note bad';$('znote').textContent='No hay filas que descargar.';return}
+  const aoa=[ZCOLS,...filas.map(r=>[r[0],r[1],new Date(r[2]+'T12:00:00'),r[3],r[4],null])];
+  const ws=XLSX.utils.aoa_to_sheet(aoa,{cellDates:true,dateNF:'dd/mm/yyyy'});
+  ws['!cols']=[{wch:13},{wch:26},{wch:15},{wch:36},{wch:16},{wch:12}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Pre-Carga ZOHO');
+  XLSX.writeFile(wb,zohoNombre('xlsx'),{cellDates:true});
+  $('znote').className='note ok';$('znote').textContent='Archivo generado';
+};
+$('zcsv').onclick=()=>{
+  let filas;try{filas=zohoDatos().filas}catch(e){$('znote').className='note bad';$('znote').textContent='Error: '+e.message;return}
+  if(!filas.length){$('znote').className='note bad';$('znote').textContent='No hay filas que descargar.';return}
+  const esc=v=>{v=String(v??'');return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+  bajar(zohoNombre('csv'),[ZCOLS.join(','),...filas.map(r=>r.map(esc).join(','))].join('\r\n'),'text/csv');
+  $('znote').className='note ok';$('znote').textContent='Archivo generado';
+};
+
+/* ================= directorio ================= */
+let DIR=null;   // {cab:[...], filas:[[...]], iMid, iProm}
+let TELS=null;  // {nombreNormalizado: telefono}
+function leerDirectorio(filas){
+  let h=-1;
+  for(let i=0;i<Math.min(filas.length,15);i++){
+    const f=(filas[i]||[]).map(x=>norm(x));
+    if(f.includes('MERCH ID')&&f.includes('TIENDA')){h=i;break}
+  }
+  if(h<0) throw new Error('No encontré la cabecera. Debe incluir MERCH ID y TIENDA.');
+  const cab=(filas[h]||[]).map(x=>x==null?'':String(x).trim());
+  const n=cab.filter(Boolean).length;
+  const N=cab.map(x=>norm(x));
+  const iMid=N.indexOf('MERCH ID');
+  let iProm=N.indexOf('PROMOTOR');
+  if(iProm<0) throw new Error('Falta la columna Promotor.');
+  const out=[];
+  for(let i=h+1;i<filas.length;i++){
+    const r=filas[i]||[];
+    const mid=parseInt(String(r[iMid]??'').replace(/\D/g,''));
+    if(!mid) continue;
+    out.push(cab.map((_,j)=>r[j]==null?'':(typeof r[j]==='number'?r[j]:String(r[j]).trim())));
+  }
+  if(!out.length) throw new Error('No encontré filas con MERCH ID.');
+  return{cab:cab.slice(0,n),filas:out.map(r=>r.slice(0,n)),iMid,iProm};
+}
+function abrirDirectorio(f){
+  const n=$('drNote');n.className='note';n.textContent='Leyendo '+f.name+'…';
+  const fr=new FileReader();
+  fr.onload=ev=>{
+    try{
+      const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array',cellDates:true});
+      let leido=null,err='';
+      for(const s of wb.SheetNames){
+        try{leido=leerDirectorio(XLSX.utils.sheet_to_json(wb.Sheets[s],{header:1,raw:true,defval:null,blankrows:false}));break}
+        catch(e){err=e.message}
+      }
+      if(!leido)throw new Error(err||'Hoja no reconocida');
+      DIR=leido;persistir();render();
+      $('drNote').className='note ok';
+      $('drNote').textContent=`${f.name} cargado · ${DIR.filas.length} tiendas`;
+    }catch(e){$('drNote').className='note bad';$('drNote').textContent='No se pudo leer: '+e.message}
+  };
+  fr.readAsArrayBuffer(f);
+}
+function promotoresPorMerchant(sem){
+  const m={};
+  REG.filter(r=>r.rol==='promotor'&&enRuta(r)&&r.pdvCod&&(!sem||r.sem===sem)).forEach(r=>{
+    const rel=REL[keyPDV(r.pdvNom)];if(!rel)return;
+    (m[rel[0]]=m[rel[0]]||{});
+    m[rel[0]][r.persona]=(m[rel[0]][r.persona]||0)+1;
+  });
+  return m;
+}
+function directorioDatos(){
+  const sem=$('drSem').value||'';
+  const pm=promotoresPorMerchant(sem);
+  const hayTel=!!(TELS&&Object.keys(TELS).length);
+  const p1=DIR.iProm+1;
+  const cab=hayTel?[...DIR.cab.slice(0,p1),'TELEFONO',...DIR.cab.slice(p1)]:DIR.cab.slice();
+  const conTel=r=>{
+    if(!hayTel)return r;
+    const t=r[DIR.iProm]?buscarTel(r[DIR.iProm]):'';
+    return [...r.slice(0,p1),t,...r.slice(p1)];
+  };
+  const filas=[],vacias=[],parcial=[],sinTel=[];
+  DIR.filas.forEach(r=>{
+    const mid=parseInt(String(r[DIR.iMid]).replace(/\D/g,''));
+    const ps=Object.entries(pm[mid]||{}).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0]));
+    if(!ps.length){vacias.push(r[3]||mid);const c=r.slice();c[DIR.iProm]='';filas.push(conTel(c));return}
+    ps.forEach(([nom,d])=>{
+      if(d<=2)parcial.push([r[3]||mid,nom,d]);
+      const c=r.slice();c[DIR.iProm]=nom.toUpperCase();
+      if(hayTel&&!buscarTel(nom))sinTel.push(nom);
+      filas.push(conTel(c));
+    });
+  });
+  const enDir=new Set(DIR.filas.map(r=>parseInt(String(r[DIR.iMid]).replace(/\D/g,''))));
+  const faltan=[...new Set(REG.filter(r=>enRuta(r)&&r.pdvCod&&(!sem||r.sem===sem))
+    .map(r=>{const rel=REL[keyPDV(r.pdvNom)];return rel?rel[0]+' · '+rel[1]:null})
+    .filter(x=>x&&!enDir.has(parseInt(x))))];
+  return{filas,vacias,parcial,faltan,cab,sinTel:[...new Set(sinTel)],hayTel};
+}
+function pintarDirectorio(){
+  $('drVacio').classList.toggle('hidden',!!DIR||MODO!=='admin');
+  $('drListo').classList.toggle('hidden',!DIR);
+  $('drReset').classList.toggle('hidden',MODO!=='admin');
+  $('drTelBox').classList.toggle('hidden',MODO!=='admin');
+  if(!DIR){
+    if(MODO!=='admin')$('drAvisoPub').classList.remove('hidden');
+    return;
+  }
+  $('drAvisoPub').classList.add('hidden');
+  const cur=$('drSem').value;
+  opt($('drSem'),SEMANAS.map(s=>[s,'Del '+fmtD(s)+' al '+fmtD(sumaDias(s,6))]),'Todo el acumulado');
+  if(cur&&SEMANAS.includes(cur))$('drSem').value=cur;else if(SEMANAS.length)$('drSem').value=SEMANAS[0];
+  const{filas,vacias,parcial,faltan,cab,sinTel,hayTel}=directorioDatos();
+  const admin=MODO==='admin';
+  $('drNote').className='note';
+  $('drNote').textContent=admin?`${filas.length} filas desde ${DIR.filas.length} tiendas`:'';
+  const av=[];
+  if(vacias.length)av.push(`<b>${vacias.length} tiendas sin promotor en la ruta</b>, con el campo vacío: ${vacias.join(', ')}.`);
+  if(faltan.length)av.push(`<b>${faltan.length} tiendas de la ruta no están en la hoja de origen</b>: ${faltan.join('; ')}. Habría que agregarlas.`);
+  if(parcial.length)av.push(`${parcial.length} promotores con presencia parcial: ${parcial.map(p=>p[1]+' en '+p[0]+' ('+p[2]+'d)').join('; ')}. Verificar si son refuerzo o cobertura puntual.`);
+  $('drAviso').innerHTML=av.length?`<ul style="margin:12px 0 0;padding-left:18px;font-size:12.5px;color:var(--muted);max-width:82ch">${av.map(x=>`<li style="margin-bottom:5px">${x}</li>`).join('')}</ul>`:'';
+  if(!hayTel)av.push('Sin teléfonos disponibles.'+(TELINFO&&TELINFO.motivo?' '+TELINFO.motivo:'')+' Puedes subir la base manualmente con el botón de arriba.');
+  else{
+    const f=TELINFO&&TELINFO.actualizado?new Date(TELINFO.actualizado).toLocaleString('es-PE',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):null;
+    if(f)av.push(`Teléfonos leídos de la hoja de Google · última lectura ${f}${MODO==='admin'?' · <a href="#" id="drTelRe" style="color:var(--sup)">actualizar ahora</a>':''}.`);
+    if(sinTel.length)av.push(`<b>${sinTel.length} promotores sin teléfono en la base:</b> ${sinTel.slice(0,6).join(', ')}${sinTel.length>6?'…':''}.`);
+  }
+  $('drAviso').innerHTML=admin&&av.length?`<ul style="margin:12px 0 0;padding-left:18px;font-size:12.5px;color:var(--muted);max-width:82ch">${av.map(x=>`<li style="margin-bottom:5px">${x}</li>`).join('')}</ul>`:'';
+  const re=$('drTelRe');
+  if(re)re.onclick=async e=>{
+    e.preventDefault();
+    $('drTelNote').className='note';$('drTelNote').textContent='Releyendo la hoja…';
+    try{
+      const r=await api('/api/telefonos?forzar=1',{headers:CLAVE?{'x-clave':CLAVE}:{}});
+      if(r.telefonos){TELS=r.telefonos;TELINFO=r;$('drTelNote').className='note ok';
+        $('drTelNote').textContent=Object.keys(r.telefonos).length+' teléfonos actualizados';render()}
+      else{$('drTelNote').className='note bad';$('drTelNote').textContent=r.motivo||'No se pudo leer la hoja'}
+    }catch(err){$('drTelNote').className='note bad';$('drTelNote').textContent=err.message}
+  };
+  $('drPrev').innerHTML='<table><tr>'+cab.map(c=>`<th>${c}</th>`).join('')+'</tr>'+
+    filas.slice(0,30).map(r=>'<tr>'+r.map(c=>`<td>${c===''?'—':c}</td>`).join('')+'</tr>').join('')+'</table>';
+}
+function drNombre(ext){const s=$('drSem').value;return 'Directorio_'+(s?s.replace(/-/g,''):'acumulado')+'.'+ext}
+$('drDrop').onclick=()=>$('drFile').click();
+$('drDrop').ondragover=e=>{e.preventDefault();$('drDrop').classList.add('over')};
+$('drDrop').ondragleave=()=>$('drDrop').classList.remove('over');
+$('drDrop').ondrop=e=>{e.preventDefault();$('drDrop').classList.remove('over');if(e.dataTransfer.files[0])abrirDirectorio(e.dataTransfer.files[0])};
+$('drFile').onchange=e=>{if(e.target.files[0])abrirDirectorio(e.target.files[0]);e.target.value=''};
+$('drReset').onclick=()=>{DIR=null;persistir();render()};
+$('drSem').onchange=pintarDirectorio;
+$('drXlsx').onclick=()=>{
+  const{filas,cab}=directorioDatos();
+  const ws=XLSX.utils.aoa_to_sheet([cab,...filas]);
+  ws['!cols']=cab.map((c,i)=>({wch:i===DIR.iProm?38:Math.max(12,String(c).length+6)}));
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Directorio');
+  XLSX.writeFile(wb,drNombre('xlsx'));
+  $('drNote').className='note ok';$('drNote').textContent='Archivo generado';
+};
+$('drCsv').onclick=()=>{
+  const{filas,cab}=directorioDatos();
+  const esc=v=>{v=String(v??'');return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+  bajar(drNombre('csv'),[cab.join(','),...filas.map(r=>r.map(esc).join(','))].join('\r\n'),'text/csv');
+  $('drNote').className='note ok';$('drNote').textContent='Archivo generado';
+};
+
+/* ================= teléfonos ================= */
+const MOJI={'Ã‘':'Ñ','Ã±':'ñ','Ã©':'é','Ã¡':'á','Ã­':'í','Ã³':'ó','Ãº':'ú','Ã‰':'É'};
+function nomClave(s){
+  s=String(s||'');
+  for(const a in MOJI) s=s.split(a).join(MOJI[a]);
+  s=s.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  return s.replace(/[^A-Z]/g,' ').split(/\s+/).filter(t=>t.length>1).join(' ');
+}
+const tokens=s=>nomClave(s).split(' ').filter(Boolean);
+function lev1(a,b){
+  if(a===b)return true;
+  if(Math.abs(a.length-b.length)>1||Math.min(a.length,b.length)<5)return false;
+  if(a.length>b.length){const t=a;a=b;b=t}
+  let i=0,j=0,d=0;
+  while(i<a.length&&j<b.length){
+    if(a[i]===b[j]){i++;j++}
+    else{ if(++d>1)return false; if(a.length===b.length){i++;j++} else j++ }
+  }
+  return d+(b.length-j)+(a.length-i)<=1;
+}
+function igualTok(a,b){
+  if(lev1(a,b))return true;
+  return Math.min(a.length,b.length)>=4&&(a.startsWith(b)||b.startsWith(a));
+}
+function puntaje(A,B){
+  const usados=new Set(); let n=0;
+  for(const a of A) for(let k=0;k<B.length;k++){
+    if(usados.has(k))continue;
+    if(igualTok(a,B[k])){usados.add(k);n++;break}
+  }
+  return [n/Math.max(1,Math.min(A.length,B.length)),n];
+}
+let TELIDX=null,TELCACHE={};
+function buscarTel(nombre){
+  if(!TELS||!nombre)return '';
+  if(TELIDX===null||TELIDX.src!==TELS){
+    TELIDX={src:TELS,items:Object.keys(TELS).map(k=>({k,t:k.split(' ').filter(Boolean)}))};
+    TELCACHE={};
+  }
+  if(nombre in TELCACHE)return TELCACHE[nombre];
+  const A=tokens(nombre);
+  let mejor=null,bs=0,bn=0,empate=false;
+  for(const it of TELIDX.items){
+    const [s,n]=puntaje(A,it.t);
+    if(s<0.75||n<2)continue;
+    if(s>bs||(s===bs&&n>bn)){mejor=it;bs=s;bn=n;empate=false}
+    else if(s===bs&&n===bn&&mejor&&TELS[it.k]!==TELS[mejor.k])empate=true;
+  }
+  const r=(mejor&&!empate)?TELS[mejor.k]:'';
+  TELCACHE[nombre]=r;
+  return r;
+}
+function soloDigitos(v){
+  if(v==null)return '';
+  if(typeof v==='number') v=v.toFixed(0);
+  return String(v).replace(/\D/g,'').slice(-9);
+}
+function leerTelefonos(filas){
+  let h=-1,iN=-1,iT=-1,iE=-1;
+  for(let i=0;i<Math.min(filas.length,15);i++){
+    const f=(filas[i]||[]).map(x=>norm(x));
+    const a=f.findIndex(x=>x.includes('SALESCLERKNAME')||x==='NOMBRE');
+    const b=f.findIndex(x=>x.includes('PHONENUMBER')||x.includes('TELEFONO'));
+    if(a>=0&&b>=0){h=i;iN=a;iT=b;iE=f.findIndex(x=>x.includes('ESTADO_CLERK'));break}
+  }
+  if(h<0) throw new Error('No encontré las columnas SALESCLERKNAME y SALESCLERKPHONENUMBER.');
+  const act={},inact={};
+  for(let i=h+1;i<filas.length;i++){
+    const r=filas[i]||[];
+    const n=nomClave(r[iN]), t=soloDigitos(r[iT]);
+    if(!n||t.length!==9) continue;
+    const activo=iE<0||norm(r[iE])==='ACTIVO';
+    if(activo){ if(!act[n])act[n]=t } else { if(!inact[n])inact[n]=t }
+  }
+  const m={...inact,...act};
+  if(!Object.keys(m).length) throw new Error('No encontré teléfonos válidos.');
+  return m;
+}
+function abrirTelefonos(f){
+  const n=$('drTelNote');n.className='note';n.textContent='Leyendo '+f.name+'…';
+  const fr=new FileReader();
+  fr.onload=ev=>{
+    try{
+      const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array'});
+      let m=null,err='';
+      for(const s of wb.SheetNames){
+        try{ m=leerTelefonos(XLSX.utils.sheet_to_json(wb.Sheets[s],{header:1,raw:true,defval:null,blankrows:false})); break }
+        catch(e){ err=e.message }
+      }
+      if(!m) throw new Error(err||'Hoja no reconocida');
+      TELS=m;persistir();render();
+      const cubre=REG.length?new Set(REG.map(r=>r.persona)).size:0;
+      const con=REG.length?[...new Set(REG.map(r=>r.persona))].filter(p=>buscarTel(p)).length:0;
+      $('drTelNote').className='note ok';
+      $('drTelNote').textContent=`${Object.keys(m).length} teléfonos cargados · cubren ${con} de ${cubre} personas de la ruta`;
+    }catch(e){ $('drTelNote').className='note bad';$('drTelNote').textContent='No se pudo leer: '+e.message }
+  };
+  fr.readAsArrayBuffer(f);
+}
+$('drTelBtn').onclick=()=>$('drTelFile').click();
+$('drTelFile').onchange=e=>{if(e.target.files[0])abrirTelefonos(e.target.files[0]);e.target.value=''};
+
+</script>
